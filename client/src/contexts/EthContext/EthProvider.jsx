@@ -7,29 +7,26 @@ function EthProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const init = useCallback(
-    async (itemManagerArtifact, itemArtifact) => {
-      if (itemManagerArtifact && itemArtifact) {
+    async itemManagerArtifact => {
+      if (itemManagerArtifact) {
         const web3 = new Web3(Web3.givenProvider || "ws://localhost:9545");
         const accounts = await web3.eth.requestAccounts();
         const networkID = await web3.eth.net.getId();
         const { abi: abiItemManagerContract } = itemManagerArtifact;
-        const { abi: abiItemContract } = itemArtifact;
-
+        
         let addressItemManagerContract, itemManagerContract;
-        let addressItemContract, itemContract;
         try {
           addressItemManagerContract = itemManagerArtifact.networks[networkID].address;
           itemManagerContract = new web3.eth.Contract(abiItemManagerContract, addressItemManagerContract);
-
-          addressItemContract = itemArtifact.networks[networkID].address;
-          itemContract = new web3.eth.Contract(abiItemContract, addressItemContract);
-
+          itemManagerContract.events.SupplyChainStep().on("data", async e => {
+            console.log("event", JSON.stringify(e))
+          })
         } catch (err) {
           console.error(err);
         }
         dispatch({
           type: actions.init,
-          data: { itemManagerArtifact, itemArtifact, web3, accounts, networkID, itemManagerContract, itemContract }
+          data: { itemManagerArtifact, web3, accounts, networkID, itemManagerContract }
         });
       }
     }, []);
@@ -37,10 +34,8 @@ function EthProvider({ children }) {
   useEffect(() => {
     const tryInit = async () => {
       try {
-        //const artifact = require("../../contracts/SimpleStorage.json");
         const itemManagerArtifact = require("../../contracts/ItemManager.json");
-        const itemArtifact = require("../../contracts/Item.json");
-        init(itemManagerArtifact, itemArtifact);
+        init(itemManagerArtifact);
       } catch (err) {
         console.error(err);
       }
